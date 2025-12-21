@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+
+# Environment variables
+.env
+
+# Google Cloud credentials
+*.json
+
+# Uploaded images
+uploads/
+
+# Android
+android/.gradle/
+android/.idea/
+android/app/build/
+*.apk
+*.aab
+
+# OS
+.DS_Store
