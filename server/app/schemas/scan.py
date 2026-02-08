@@ -1,11 +1,13 @@
 from pydantic import BaseModel
 from datetime import datetime
+from app.schemas.animal import AnimalOut
+
 
 class ScanOut(BaseModel):
-    animal_id: int
-    confidence: float
-    image_path: str
+    id: int
+    confidence: float | None = None
     scanned_at: datetime
+    animal: AnimalOut
 
     class Config:
-        orm_mode = True
+        from_attributes = True

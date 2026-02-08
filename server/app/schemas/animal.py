@@ -1,20 +1,26 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+
 class AnimalOut(BaseModel):
     id: int
     name: str
-    scientific_name: Optional[str]
-    category: Optional[str]
-    description: Optional[str]
-    max_height: Optional[str]
-    max_weight: Optional[str]
-    diet: Optional[str]
-    habitat: Optional[str]
-    breeds: Optional[List[str]]
-    colors: Optional[List[str]]
-    lifestyle: Optional[str]
-    fun_fact: Optional[str]
+    common_name: Optional[str] = None
+    scientific_name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+
+    max_height: Optional[str] = None
+    max_weight: Optional[str] = None
+    diet: Optional[str] = None
+    habitat: Optional[str] = None
+
+    breeds: Optional[List[str]] = None
+    colors: Optional[List[str]] = None
+    lifestyle: Optional[str] = None
+    fun_fact: Optional[str] = None
+
+    image_url: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

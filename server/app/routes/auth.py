@@ -7,6 +7,7 @@ from app.utils.security import hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+
 @router.post("/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter_by(username=data.username).first():
@@ -14,11 +15,12 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
 
     user = User(
         username=data.username,
-        password_hash=hash_password(data.password)
+        password_hash=hash_password(data.password),
     )
     db.add(user)
     db.commit()
     return {"message": "User created"}
+
 
 @router.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):

@@ -1,78 +1,132 @@
+# from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+# from sqlalchemy.orm import Session
+
+# from app.database import get_db
+# from app.services.predictor import predict_animal
+# from app.models.animal import Animal
+# from app.models.scan import Scan
+# from app.models.user import User
+# from app.schemas.animal import AnimalOut
+
+# router = APIRouter(prefix="/predict", tags=["Prediction"])
+
+
+# @router.post("/")
+# async def predict(
+#     file: UploadFile = File(...),
+#     user_id: str | None = None,  # TEMP: pass user_id manually from Android
+#     db: Session = Depends(get_db),
+# ):
+#     if not user_id:
+#         raise HTTPException(status_code=400, detail="user_id is required")
+
+#     user = db.query(User).filter(User.id == user_id).first()
+#     if not user:
+#         raise HTTPException(status_code=404, detail="User not found")
+
+#     image_bytes = await file.read()
+#     predicted_name, confidence = predict_animal(image_bytes)
+
+#     if predicted_name == "Unknown":
+#         raise HTTPException(status_code=400, detail="Could not identify animal")
+
+#     animal = db.query(Animal).filter(Animal.name == predicted_name).first()
+#     if not animal:
+#         raise HTTPException(
+#             status_code=404,
+#             detail=f"Animal '{predicted_name}' not found in database",
+#         )
+
+#     # ✅ Save scan = user collected animal
+#     scan = Scan(
+#         user_id=user_id,
+#         animal_id=animal.id,
+#         confidence=confidence,
+#     )
+#     db.add(scan)
+#     db.commit()
+#     db.refresh(scan)
+
+#     return {
+#         "animal": AnimalOut.model_validate(animal).model_dump(),
+#         "confidence": confidence,
+#         "scan_id": scan.id,
+#         "scanned_at": scan.scanned_at,
+#     }
+
+
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
-import os
-import shutil
-from uuid import uuid4
 
 from app.database import get_db
 from app.services.predictor import predict_animal
-from app.models.animal import Animal
 from app.models.scan import Scan
+from app.models.user import User
+from app.schemas.animal import AnimalOut
 
 router = APIRouter(prefix="/predict", tags=["Prediction"])
 
-UPLOAD_DIR = "uploads/user_images"
-
 
 @router.post("/")
-def predict(
+async def predict(
     file: UploadFile = File(...),
-    user_id: str = None,   # TEMP: pass user_id manually for now
-    db: Session = Depends(get_db)
+    user_id: str | None = None,  # TEMP: pass user_id manually from Android
+    db: Session = Depends(get_db),
 ):
-    # 1. Save image
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
 
-    filename = f"{uuid4()}_{file.filename}"
-    image_path = os.path.join(UPLOAD_DIR, filename)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    with open(image_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    image_bytes = await file.read()
 
-    # 2. Predict animal
-    predicted_name, confidence = predict_animal(image_path)
-
-    if predicted_name == "Unknown":
-        raise HTTPException(
-            status_code=400,
-            detail="Could not identify animal"
-        )
-
-    # 3. Fetch animal from DB
-    animal = db.query(Animal).filter(Animal.name == predicted_name).first()
+    animal, confidence, vision_label = predict_animal(image_bytes, db)
 
     if not animal:
         raise HTTPException(
-            status_code=404,
-            detail=f"Animal '{predicted_name}' not found in database"
+            status_code=400,
+            detail=f"Could not map Vision label '{vision_label}' to any animal in DB",
         )
 
-    # 4. Save scan (collection logic)
+    # ✅ Prevent duplicate collection (same animal for same user)
+    existing = (
+        db.query(Scan)
+        .filter(Scan.user_id == user_id, Scan.animal_id == animal.id)
+        .first()
+    )
+
+    if existing:
+        # Optionally keep the best confidence
+        if confidence > (existing.confidence or 0):
+            existing.confidence = confidence
+            db.commit()
+            db.refresh(existing)
+
+        return {
+            "already_collected": True,
+            "scan_id": existing.id,
+            "scanned_at": existing.scanned_at,
+            "confidence": existing.confidence,
+            "vision_label": vision_label,
+            "animal": AnimalOut.model_validate(animal).model_dump(),
+        }
+
     scan = Scan(
         user_id=user_id,
         animal_id=animal.id,
         confidence=confidence,
-        image_path=image_path
     )
-
     db.add(scan)
     db.commit()
+    db.refresh(scan)
 
-    # 5. Return Pokédex data
     return {
-        "animal": {
-            "id": animal.id,
-            "name": animal.name,
-            "scientific_name": animal.scientific_name,
-            "category": animal.category,
-            "description": animal.description,
-            "max_height": animal.max_height,
-            "max_weight": animal.max_weight,
-            "diet": animal.diet,
-            "habitat": animal.habitat,
-            "colors": animal.colors,
-            "lifestyle": animal.lifestyle,
-            "fun_fact": animal.fun_fact
-        },
-        "confidence": confidence
+        "already_collected": False,
+        "scan_id": scan.id,
+        "scanned_at": scan.scanned_at,
+        "confidence": confidence,
+        "vision_label": vision_label,
+        "animal": AnimalOut.model_validate(animal).model_dump(),
     }
