@@ -6,35 +6,20 @@ Users can capture or upload an image of an animal, and AniDex identifies the spe
 
 ---
 
-## 🎥 Demo Video
-
-▶ **Full Demo**  
-[Watch Demo Video](public/Anidex%20Demo.mp4)
-
----
-
 ## 📸 App Screenshots
 
-### 🐕 Animal Recognition & Result Card
 ![Animal Detection](public/Screenshot_20260208_200832.png)
 
 ![Animal Info Card](public/Screenshot_20260208_200842.png)
 
----
-
-### 📷 Image Capture & Processing
 ![Image Input](public/Screenshot_20260208_200904.png)
 
 ![Processing Result](public/Screenshot_20260208_200921.png)
 
----
-
-### 🪪 Final Animal Card Display
 ![Final Card](public/Screenshot_20260208_200927.png)
 
 ![Details View](public/Screenshot_20260208_200938.png)
 
----
 
 ## 🚀 Features
 
@@ -92,7 +77,6 @@ AniDex/
 ├── server/ # FastAPI backend
 ├── public/ # Demo video & screenshots
 └── README.md
-
 
 
 ---
